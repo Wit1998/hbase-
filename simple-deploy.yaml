@@ -1,0 +1,138 @@
+# HBase数据验证系统 - 简化版Kubernetes部署
+# 使用方法: kubectl apply -f simple-deploy.yaml
+
+---
+# ConfigMap - 应用配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-validator-config
+  labels:
+    app: hbase-validator
+data:
+  config.yaml: |
+    # 源端HBase配置 - 请修改为您的实际配置
+    source:
+      host: "your-source-hbase-host"  # 替换为实际地址
+      port: 9090
+      table_name: "hope_saas_oms:oms_order_info"
+      timeout: 30000
+    
+    # 目标端HBase配置 - 请修改为您的实际配置
+    target:
+      host: "your-target-hbase-host"  # 替换为实际地址
+      port: 9090
+      table_name: "hope_saas_oms:oms_order_info"
+      timeout: 30000
+    
+    validation:
+      max_rows: 1000
+      max_workers: 10
+      batch_size: 100
+      timeout: 300
+      verbose: true
+    
+    report:
+      output_dir: "./reports"
+      formats: ["json", "excel"]
+      include_details: true
+
+---
+# Deployment - 主应用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hbase-validator
+  labels:
+    app: hbase-validator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hbase-validator
+  template:
+    metadata:
+      labels:
+        app: hbase-validator
+    spec:
+      containers:
+      - name: hbase-validator
+        image: ccr.ccs.tencentyun.com/your-namespace/hbase-validator:latest
+        ports:
+        - containerPort: 8501
+        env:
+        - name: STREAMLIT_SERVER_PORT
+          value: "8501"
+        - name: STREAMLIT_SERVER_ADDRESS
+          value: "0.0.0.0"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+        - name: reports-volume
+          mountPath: /app/reports
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config-volume
+        configMap:
+          name: hbase-validator-config
+      - name: reports-volume
+        emptyDir: {}
+
+---
+# Service - 服务暴露
+apiVersion: v1
+kind: Service
+metadata:
+  name: hbase-validator-service
+  labels:
+    app: hbase-validator
+spec:
+  selector:
+    app: hbase-validator
+  ports:
+  - port: 80
+    targetPort: 8501
+  type: ClusterIP
+
+---
+# Ingress - 外部访问
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hbase-validator-ingress
+  labels:
+    app: hbase-validator
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: hbase-validator.your-domain.com  # 请替换为您的域名
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hbase-validator-service
+            port:
+              number: 80
