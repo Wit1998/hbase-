@@ -1,62 +1,46 @@
-# Git相关
+# Git
 .git
 .gitignore
 
-# Python缓存和虚拟环境
+# Python
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
-venv/
-.venv/
-env/
-.env/
+*.so
+.pytest_cache
+.coverage
 
-# IDE和编辑器
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# 临时文件
-*.log
-*.tmp
+# OS
 .DS_Store
 Thumbs.db
 
-# 构建产物
-build/
-dist/
-*.egg-info/
+# Logs
+*.log
+logs/
 
-# 测试覆盖率
-.coverage
-htmlcov/
-.pytest_cache/
-
-# 文档
+# Documentation
+README.md
 *.md
-docs/
 
-# 开发工具配置
-.flake8
-.black
-pytest.ini
-tox.ini
+# Docker
+Dockerfile*
+.dockerignore
 
-# 本地配置文件
-.env.local
-*.local
-
-# 报告目录内容（保留目录结构）
+# Reports directory (will be created in container)
 reports/*
-!reports/.gitkeep
 
-# Kubernetes配置
-k8s/
-
-# 镜像构建时的临时文件
-Dockerfile.tmp
-docker-compose.override.yml
+# Demo files
+demo_rowkeys.txt

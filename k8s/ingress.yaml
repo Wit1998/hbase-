@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hbase-validator-ingress
+  labels:
+    app: hbase-validator
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 腾讯云TKE特有注解
+    kubernetes.io/ingress.extensionsV1beta1.class: qcloud
+    ingress.cloud.tencent.com/direct-access: "false"
+spec:
+  rules:
+  - host: hbase-validator.your-domain.com  # 请替换为您的域名
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: hbase-validator-service
+            port:
+              number: 80
+  # TLS配置（可选）
+  # tls:
+  # - hosts:
+  #   - hbase-validator.your-domain.com
+  #   secretName: hbase-validator-tls
