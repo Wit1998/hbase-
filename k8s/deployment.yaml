@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hbase-validator
+  namespace: default
+  labels:
+    app: hbase-validator
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hbase-validator
+  template:
+    metadata:
+      labels:
+        app: hbase-validator
+        version: v1.0.0
+    spec:
+      containers:
+      - name: hbase-validator
+        image: hbase-validator:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8501
+          name: http
+        env:
+        - name: PYTHONUNBUFFERED
+          valueFrom:
+            configMapKeyRef:
+              name: hbase-validator-env
+              key: PYTHONUNBUFFERED
+        - name: STREAMLIT_SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: hbase-validator-env
+              key: STREAMLIT_SERVER_PORT
+        - name: STREAMLIT_SERVER_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: hbase-validator-env
+              key: STREAMLIT_SERVER_ADDRESS
+        - name: STREAMLIT_SERVER_HEADLESS
+          valueFrom:
+            configMapKeyRef:
+              name: hbase-validator-env
+              key: STREAMLIT_SERVER_HEADLESS
+        - name: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+          valueFrom:
+            configMapKeyRef:
+              name: hbase-validator-env
+              key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+        - name: reports-volume
+          mountPath: /app/reports
+        - name: logs-volume
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: config-volume
+        configMap:
+          name: hbase-validator-config
+          items:
+          - key: config.yaml
+            path: config.yaml
+      - name: reports-volume
+        emptyDir: {}
+      - name: logs-volume
+        emptyDir: {}
+      restartPolicy: Always
