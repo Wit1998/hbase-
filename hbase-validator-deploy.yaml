@@ -128,7 +128,7 @@ spec:
       # 容器配置
       containers:
       - name: hbase-validator
-        image: ccr.ccs.tencentyun.com/your-namespace/hbase-validator:latest
+        image: tencentpartner-docker.pkg.coding.net/rorokey/hbase-validator:latest
         imagePullPolicy: Always
         
         ports:
