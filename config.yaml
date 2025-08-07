@@ -1,0 +1,66 @@
+# HBase数据迁移验证系统配置文件
+
+# 源端HBase配置
+source:
+  host: "localhost"
+  port: 9090
+  table_name: "hope_saas_oms:oms_order_info"
+  timeout: 30000
+
+# 目标端HBase配置  
+target:
+  host: "localhost"
+  port: 9090
+  table_name: "hope_saas_oms:oms_order_info"
+  timeout: 30000
+
+# 验证配置
+validation:
+  # 最大验证行数，0表示不限制
+  max_rows: 1000
+  
+  # 并发线程数
+  max_workers: 10
+  
+  # 批处理大小
+  batch_size: 100
+  
+  # 超时设置（秒）
+  timeout: 300
+  
+  # 是否启用详细日志
+  verbose: true
+  
+  # 采样验证比例（0.1表示验证10%的数据）
+  sample_rate: 1.0
+
+# 报告配置
+report:
+  # 报告输出目录
+  output_dir: "./reports"
+  
+  # 报告格式：json, excel, html
+  formats: ["json", "excel"]
+  
+  # 是否包含详细的不匹配信息
+  include_details: true
+  
+  # 最大详细记录数
+  max_detail_records: 1000
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "hbase_validation.log"
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+  
+# Streamlit界面配置
+ui:
+  # 页面标题
+  title: "HBase数据迁移验证系统"
+  
+  # 默认最大显示行数
+  default_display_rows: 100
+  
+  # 自动刷新间隔（秒）
+  refresh_interval: 5
