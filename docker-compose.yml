@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hbase-validator
     ports:
       - "8501:8501"
     environment:
@@ -13,14 +12,15 @@ services:
       - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
       - STREAMLIT_SERVER_HEADLESS=true
-      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+      - STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=false
     volumes:
+      # 挂载配置文件（可选，用于运行时修改配置）
       - ./config.yaml:/app/config.yaml:ro
+      # 挂载报告输出目录
       - ./reports:/app/reports
+      # 挂载日志目录
       - ./logs:/app/logs
-      - hbase-validator-data:/app/data
-    networks:
-      - hbase-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
@@ -29,23 +29,20 @@ services:
       retries: 3
       start_period: 40s
 
-  # 可选：添加HBase模拟服务用于测试
-  # hbase-simulator:
-  #   image: hbase:2.4.9
-  #   container_name: hbase-simulator
+  # HBase模拟服务（可选，用于测试）
+  # hbase-mock:
+  #   image: harisekhon/hbase:latest
   #   ports:
   #     - "9090:9090"
   #     - "16010:16010"
   #   environment:
-  #     - HBASE_CONF_hbase_rootdir=hdfs://namenode:9000/hbase
-  #   networks:
-  #     - hbase-network
+  #     - HBASE_CONF_hbase_thrift_port=9090
   #   restart: unless-stopped
 
-volumes:
-  hbase-validator-data:
-    driver: local
-
 networks:
-  hbase-network:
+  default:
     driver: bridge
+
+volumes:
+  reports:
+  logs:

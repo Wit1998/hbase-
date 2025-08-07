@@ -2,12 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hbase-validator
-  namespace: default
   labels:
     app: hbase-validator
     version: v1.0.0
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: hbase-validator
@@ -15,56 +14,31 @@ spec:
     metadata:
       labels:
         app: hbase-validator
-        version: v1.0.0
     spec:
       containers:
       - name: hbase-validator
-        image: hbase-validator:latest
-        imagePullPolicy: Always
+        image: your-registry/hbase-validator:latest
         ports:
         - containerPort: 8501
-          name: http
+          protocol: TCP
         env:
-        - name: PYTHONUNBUFFERED
-          valueFrom:
-            configMapKeyRef:
-              name: hbase-validator-env
-              key: PYTHONUNBUFFERED
         - name: STREAMLIT_SERVER_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: hbase-validator-env
-              key: STREAMLIT_SERVER_PORT
+          value: "8501"
         - name: STREAMLIT_SERVER_ADDRESS
-          valueFrom:
-            configMapKeyRef:
-              name: hbase-validator-env
-              key: STREAMLIT_SERVER_ADDRESS
+          value: "0.0.0.0"
         - name: STREAMLIT_SERVER_HEADLESS
-          valueFrom:
-            configMapKeyRef:
-              name: hbase-validator-env
-              key: STREAMLIT_SERVER_HEADLESS
-        - name: STREAMLIT_BROWSER_GATHER_USAGE_STATS
-          valueFrom:
-            configMapKeyRef:
-              name: hbase-validator-env
-              key: STREAMLIT_BROWSER_GATHER_USAGE_STATS
-        volumeMounts:
-        - name: config-volume
-          mountPath: /app/config.yaml
-          subPath: config.yaml
-        - name: reports-volume
-          mountPath: /app/reports
-        - name: logs-volume
-          mountPath: /app/logs
+          value: "true"
+        - name: STREAMLIT_SERVER_ENABLE_CORS
+          value: "false"
+        - name: STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION
+          value: "false"
         resources:
           requests:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "250m"
           limits:
             memory: "1Gi"
-            cpu: "1000m"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /_stcore/health
@@ -77,19 +51,103 @@ spec:
           httpGet:
             path: /_stcore/health
             port: 8501
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /app/config.yaml
+          subPath: config.yaml
+          readOnly: true
+        - name: reports
+          mountPath: /app/reports
       volumes:
-      - name: config-volume
+      - name: config
         configMap:
           name: hbase-validator-config
-          items:
-          - key: config.yaml
-            path: config.yaml
-      - name: reports-volume
-        emptyDir: {}
-      - name: logs-volume
-        emptyDir: {}
+      - name: reports
+        persistentVolumeClaim:
+          claimName: hbase-validator-reports
       restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hbase-validator-service
+  labels:
+    app: hbase-validator
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8501
+    protocol: TCP
+    name: http
+  selector:
+    app: hbase-validator
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hbase-validator-config
+data:
+  config.yaml: |
+    # HBase数据迁移验证系统配置文件
+
+    # 源端HBase配置
+    source:
+      host: "your-source-hbase-host"
+      port: 9090
+      table_name: "hope_saas_oms:oms_order_info"
+      timeout: 30000
+
+    # 目标端HBase配置  
+    target:
+      host: "your-target-hbase-host"
+      port: 9090
+      table_name: "hope_saas_oms:oms_order_info"
+      timeout: 30000
+
+    # 验证配置
+    validation:
+      max_rows: 1000
+      max_workers: 10
+      batch_size: 100
+      timeout: 300
+      verbose: true
+      sample_rate: 1.0
+
+    # 报告配置
+    report:
+      output_dir: "./reports"
+      formats: ["json", "excel"]
+      include_details: true
+      max_detail_records: 1000
+
+    # 日志配置
+    logging:
+      level: "INFO"
+      file: "hbase_validation.log"
+      format: "%(asctime)s - %(levelname)s - %(message)s"
+      
+    # Streamlit界面配置
+    ui:
+      title: "HBase数据迁移验证系统"
+      default_display_rows: 100
+      refresh_interval: 5
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hbase-validator-reports
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: 根据腾讯云环境选择合适的存储类
